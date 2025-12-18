@@ -38,6 +38,7 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Paths
 import java.nio.file.attribute.PosixFileAttributeView
 import java.nio.file.attribute.PosixFilePermissions
+import java.util.Arrays
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.Path
 import kotlin.io.path.exists
@@ -58,6 +59,7 @@ class JsonnetLSStartupHandler {
         val languageServerRepo = JLSSettingsStateComponent.instance.state.releaseRepository
         val enableEvalDiagnostics = JLSSettingsStateComponent.instance.state.enableEvalDiagnostics
         val enableLintDiagnostics = JLSSettingsStateComponent.instance.state.enableLintDiagnostics
+        val enableTankaMode = JLSSettingsStateComponent.instance.state.enableTankaMode
         val jpaths = JLSSettingsStateComponent.instance.state.jPaths
         val platform = getPlatform()
         val arch = getArch()
@@ -104,9 +106,13 @@ class JsonnetLSStartupHandler {
         setExecutablePerms(binFile)
 
         // Configure language server
-        // TODO: Make --tanka configurable
-        // TODO: add JPath configuration
         var optionalArgs = arrayOf<String>()
+
+        // Add --tanka flag if enabled (auto-detects jpaths from vendor/lib directories)
+        if (enableTankaMode) {
+            optionalArgs += "--tanka"
+        }
+
         if (enableEvalDiagnostics) {
             optionalArgs += "--eval-diags"
         }
@@ -122,10 +128,11 @@ class JsonnetLSStartupHandler {
                 log.warn("Invalid jpath: $jpath")
             }
         }
+
         IntellijLanguageClient.addServerDefinition(
             RawCommandServerDefinition(
                 EXTENSIONS,
-                arrayOf(binFile.toString(), "--tanka", *optionalArgs)
+                arrayOf(binFile.toString(), *optionalArgs)
             )
         )
     }
